@@ -1,0 +1,494 @@
+
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+"""#Kütüphanelerin Yüklenmesi"""
+
+# Commented out IPython magic to ensure Python compatibility.
+import os
+import zipfile
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import ConfusionMatrixDisplay
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+# %matplotlib inline
+
+from tensorflow.keras import layers
+from tensorflow.keras import models
+from tensorflow.keras import regularizers
+from tensorflow.keras import optimizers
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
+
+from keras.layers.convolutional import Conv2D
+
+"""##listdir kullanılarak dizinden görüntünün alınması"""
+
+path = '/content/drive/MyDrive/Derin Öğrenme Dersi/data'
+filenames = os.listdir(path)
+filenames[:5]
+
+"""## fotoğrafların etiketlerini okuyup dataframe oluşturma"""
+
+label = []
+for filename in filenames:
+    if filename.split('.')[0] =='Y':
+        label.append('YES')
+    else:
+        label.append('NO')
+
+df = pd.DataFrame({
+                   'name':filenames,
+                   'label':label
+                 })
+
+df.tail()
+
+
+
+"""### Görüntü sınıflarının görselleştirilmesi"""
+
+
+
+
+print(df['label'].value_counts())
+sns.countplot(data=df, x=df['label']);
+
+"""###Örnek görüntü"""
+
+load_img('/content/drive/MyDrive/Derin Öğrenme Dersi/data/N.157.jpeg')
+
+"""# CNN TEMEL MİMARİSİNİN OLUŞTURULMASI
+
+
+
+
+
+
+"""
+
+model = models.Sequential()
+model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(256, 256, 3)))
+model.add(layers.MaxPooling2D((2, 2)))
+
+model.add(layers.Conv2D(32, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+
+model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+
+model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+
+model.add(layers.Flatten())
+model.add(layers.Dense(512, activation='relu'))
+model.add(layers.Dense(1, activation='sigmoid'))
+
+"""* alttaki çıktı kullanılabilir"""
+
+model.summary()
+
+"""###Model2"""
+
+from keras.models import Sequential
+from keras.layers.convolutional import Convolution2D, MaxPooling2D
+from keras.layers import Activation, Flatten, Dense,Dropout
+from keras.optimizers import *
+from keras import *
+from keras.preprocessing.image import ImageDataGenerator
+
+model_2 = models.Sequential()
+model_2.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(256, 256, 3)))
+model_2.add(layers.MaxPooling2D((2, 2)))
+
+model_2.add(layers.Conv2D(32, (3, 3), activation='tanh'))
+model_2.add(layers.MaxPooling2D((2, 2)))
+
+model_2.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model_2.add(layers.MaxPooling2D((2, 2)))
+
+model_2.add(layers.Conv2D(64, (3, 3), activation='tanh'))
+model_2.add(layers.MaxPooling2D((2, 2)))
+
+model_2.add(layers.Conv2D(128, (3, 3), activation='relu'))
+model_2.add(layers.MaxPooling2D((2, 2)))
+
+model_2.add(layers.Conv2D(128, (3, 3), activation='relu'))
+model_2.add(layers.MaxPooling2D((2, 2)))
+
+
+model_2.add(layers.Flatten())
+model_2.add(layers.Dense(512, activation='relu'))
+model_2.add(layers.Dense(1, activation='sigmoid'))
+
+model_2.summary()
+
+model_2.compile(optimizer='Adam', loss='binary_crossentropy', metrics='acc')
+
+history = model_2.fit(train_data,
+                    validation_data = val_data,
+                    epochs=10
+                   )
+
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+plt.figure(figsize=(15,8))
+plt.plot(loss, label='Train loss')
+plt.plot(val_loss,'--', label='Val loss')
+plt.title('Training and validation loss')
+plt.xticks(np.arange(0,10))
+plt.yticks(np.arange(0, 0.7, 0.05));
+plt.grid()
+plt.legend();
+
+"""## Model Compile
+
+"""
+
+model.compile(optimizer='Adam', loss='binary_crossentropy', metrics='acc')
+
+model_2.compile(optimizer='Adam', loss='binary_crossentropy', metrics='acc')
+
+"""# Data Preprocessing
+
+## Splitting data into train,test and validation
+
+*  Burada verilerin eşit bölünmesi için stratify parametresi kullanıldı. Bu şekilde sınıflarımız 1:1 olacak
+"""
+
+train, test_val = train_test_split(df, test_size=0.3,stratify=df['label'], random_state=15)
+
+test, val = train_test_split(test_val, test_size=0.5,  stratify=test_val['label'], random_state=15)
+
+print('train size:', train.shape[0],
+      '\nvalidation size:', val.shape[0],
+      '\ntest size:', test.shape[0],     
+     )
+
+print('train labels:\n',train['label'].value_counts(),
+      '\n\nvalidataion labels:\n',val['label'].value_counts(),
+      '\n\ntest labels:\n',test['label'].value_counts(),
+      sep='')
+
+"""## Data Normalization 
+
+"""
+
+train_gen = ImageDataGenerator(rescale=1./255)
+train_data = train_gen.flow_from_dataframe(train,
+                                           directory=path,
+                                           x_col='name',
+                                           y_col='label',
+                                           class_mode='binary',
+                                           seed=17                                          
+                                          )
+
+val_gen = ImageDataGenerator(rescale=1./255)
+val_data = val_gen.flow_from_dataframe(val,
+                                       directory=path,
+                                       x_col='name',
+                                       y_col='label',
+                                       class_mode='binary',
+                                       seed=17  
+                                      )
+
+
+
+test_gen = ImageDataGenerator(rescale=1./255)
+test_data = test_gen.flow_from_dataframe(test,
+                                        directory=path,
+                                        x_col='name',
+                                        y_col='label',
+                                        class_mode='binary',
+
+                                        shuffle=False,
+                                        seed=17  
+                                       )
+
+history = model.fit(train_data,
+                    validation_data = val_data,
+                    epochs=10
+                   )
+
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+plt.figure(figsize=(15,8))
+plt.plot(loss, label='Train loss')
+plt.plot(val_loss,'--', label='Val loss')
+plt.title('Training and validation loss')
+plt.xticks(np.arange(0,10))
+plt.yticks(np.arange(0, 0.7, 0.05));
+plt.grid()
+plt.legend();
+
+acc = history.history['acc']
+val_acc = history.history['val_acc']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs = range(1, len(acc) + 1)
+
+plt.plot(epochs, acc, 'm*-', label= 'Eğitim Başarısı')
+plt.plot(epochs, val_acc, 'g*-', label= 'Validation Başarısı')
+plt.title('Model Eğitim ve Validation Başarıları')
+plt. legend()
+
+plt.figure()
+
+plt.plot(epochs, loss, 'm*-', label= 'Eğitim Kaybı')
+plt.plot(epochs, val_loss, 'g*-', label= 'Validation Kaybı')
+plt.title('Model Eğitim ve Validation Kayıpları')
+plt. legend()
+
+plt.show()
+
+pred=model.predict(test_data)
+
+pred
+
+test_pred = model.predict(test_data)
+
+pred_label = pred > 0.5
+true_label = test_data.classes
+
+ConfusionMatrixDisplay(confusion_matrix(true_label, pred_label), display_labels=test_data.class_indices).plot();
+
+model.evaluate(test_data)
+
+"""# Veri Artırımı Uygulanarak Model Kurulması
+* Burada görüntü üzerinde kesme, dönme aralıkları belirtilip yakınlaştırma, uzaklaştırma, döndürme ve yatay çevirme yöntemleri kullanılarak görüntüler çoğaltılmıştır
+"""
+
+aug_gen = ImageDataGenerator(rescale = 1./255,
+                               shear_range = 0.2,
+                               zoom_range = 0.5,
+
+                               horizontal_flip=True,
+                               fill_mode='nearest'
+                              )
+
+img_yes = load_img('/content/drive/MyDrive/Derin Öğrenme Dersi/data/Y.40.JPG')
+img_no = load_img('/content/drive/MyDrive/Derin Öğrenme Dersi/data/N.156.jpeg')
+
+img_yes_arr = image.img_to_array(img_yes)
+img_yes_arr = img_yes_arr.reshape((1,)+img_yes_arr.shape)
+
+img_no_arr = image.img_to_array(img_no)
+img_no_arr = img_no_arr.reshape((1,)+ img_no_arr.shape)
+
+aug_images_yes = aug_gen.flow(img_yes_arr, batch_size=1)
+aug_images_no = aug_gen.flow(img_no_arr, batch_size=1)
+
+plt.figure(figsize=(15,8))
+plt.subplot(141)
+plt.imshow(img_yes)
+plt.title("original")
+i=2
+for batch in aug_images_yes:
+    plt.subplot(14*10+i)
+    plt.imshow(image.array_to_img(batch[0]))
+    plt.title("augmented")
+    i += 1
+    if i % 5 == 0:
+        break
+
+plt.figure(figsize=(15,8))
+plt.subplot(141)
+plt.imshow(img_no)
+plt.title("original")
+i=2
+for batch in aug_images_no:
+    plt.subplot(14*10+i)
+    plt.imshow(image.array_to_img(batch[0]))
+    plt.title("augmented")
+    i += 1
+    if i % 5 == 0:
+        break
+
+
+
+train_data = aug_gen.flow_from_dataframe(train,
+                                         directory=path,
+                                         x_col='name',
+                                         y_col='label',
+                                         class_mode='binary',
+                                         target_size=(224,224),
+                                         seed=17
+                                        )
+
+val_data = val_gen.flow_from_dataframe(val,
+                                       directory=path,
+                                       x_col='name',
+                                       y_col='label',
+                                       class_mode='binary',
+                                       target_size=(224,224),
+                                       seed=17  
+                                      )
+
+"""# A"""
+
+best_model2 = models.Sequential()
+
+best_model2.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)))
+best_model2.add(layers.MaxPooling2D((2, 2)))
+
+best_model2.add(layers.Conv2D(32, (3, 3), activation='relu'))
+best_model2.add(layers.MaxPooling2D((2, 2)))
+
+best_model2.add(layers.Conv2D(64, (3, 3), activation='relu'))
+best_model2.add(layers.MaxPooling2D((2, 2)))
+
+best_model2.add(layers.Conv2D(64, (3, 3), activation='relu'))
+best_model2.add(layers.MaxPooling2D((2, 2)))
+
+best_model2.add(layers.Conv2D(128, (3, 3), activation='relu'))
+best_model2.add(layers.MaxPooling2D((2, 2)))
+
+best_model2.add(layers.Conv2D(128, (3, 3), activation='relu'))
+best_model2.add(layers.MaxPooling2D((2, 2)))
+
+best_model2.add(layers.Flatten())
+best_model2.add(layers.Dense(512, activation='relu'))
+
+best_model2.add(layers.Dense(1, activation='sigmoid'))
+
+best_model2.compile(optimizer='Adam', loss='binary_crossentropy', metrics='acc')
+
+best_model2.summary()
+
+history_2 = best_model2.fit(train_data,
+                           validation_data = val_data,
+                           epochs=15)
+
+loss = history_2.history['acc']
+val_loss = history_2.history['val_acc']
+
+plt.figure(figsize=(15,8))
+plt.plot(loss, label='Train acc')
+plt.plot(val_loss,'--', label='Val acc')
+plt.title('Training and validation accuracy')
+plt.yticks(np.arange(0.5, 1, 0.05))
+plt.xticks(np.arange(0, 15))
+plt.grid()
+plt.legend();
+
+best_model.save('best_model.h5')
+
+test_data2 = val_gen.flow_from_dataframe(test,
+                                        directory=path,
+                                        x_col='name',
+                                        y_col='label',
+                                        class_mode='binary',
+                                        target_size=(224,224),
+                                        shuffle=False,
+                                        seed=17  
+                                       )
+
+test_pred = best_model2.predict(test_data2)
+
+test_pred
+
+pred_label = test_pred > 0.5
+true_label = test_data2.classes
+
+ConfusionMatrixDisplay(confusion_matrix(true_label, pred_label), display_labels=test_data2.class_indices).plot();
+
+best_model2.evaluate(test_data2)
+
+pred_label = test_pred > 0.3
+true_label = test_data2.classes
+
+ConfusionMatrixDisplay(confusion_matrix(true_label, pred_label), display_labels=test_data2.class_indices).plot();
+
+
+
+acc = history_2.history['acc']
+val_acc = history_2.history['val_acc']
+loss = history_2.history['loss']
+val_loss = history_2.history['val_loss']
+epochs = range(1, len(acc) + 1)
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 12))
+ax1.plot(history_2.history['loss'], color='b', label="Training loss")
+ax1.plot(history_2.history['val_loss'], color='r', label="validation loss")
+ax1.set_xticks(np.arange(1, 15, 1))
+
+
+ax2.plot(history_2.history['acc'], color='b', label="Training accuracy")
+ax2.plot(history_2.history['val_acc'], color='r',label="Validation accuracy")
+ax2.set_xticks(np.arange(1, 15, 1))
+
+legend = plt.legend(loc='best', shadow=True)
+plt.tight_layout()
+plt.show()
+
+
+
+
+
+best_model = models.Sequential()
+
+best_model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)))
+best_model.add(layers.MaxPooling2D((2, 2)))
+
+best_model.add(layers.Conv2D(32, (3, 3), activation='relu'))
+best_model.add(layers.MaxPooling2D((2, 2)))
+
+best_model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+best_model.add(layers.MaxPooling2D((2, 2)))
+
+best_model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+best_model.add(layers.MaxPooling2D((2, 2)))
+
+best_model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+best_model.add(layers.MaxPooling2D((2, 2)))
+
+best_model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+best_model.add(layers.MaxPooling2D((2, 2)))
+
+best_model.add(layers.Flatten())
+best_model.add(layers.Dense(512, activation='relu'))
+
+best_model.add(layers.Dense(1, activation='sigmoid'))
+
+best_model.compile(optimizer='Adam', loss='binary_crossentropy', metrics='acc')
+
+best_model.summary()
+
+history_2 = best_model.fit(train_data,
+                           validation_data = val_data,
+                           epochs=10)
+
+acc = history_2.history['acc']
+val_acc = history_2.history['val_acc']
+loss = history_2.history['loss']
+val_loss = history_2.history['val_loss']
+epochs = range(1, len(acc) + 1)
+
+plt.plot(epochs, acc, 'm*-', label= 'Eğitim Başarısı')
+plt.plot(epochs, val_acc, 'g*-', label= 'Validation Başarısı')
+plt.title('Model Eğitim ve Validation Başarıları')
+plt. legend()
+
+plt.figure()
+
+plt.plot(epochs, loss, 'm*-', label= 'Eğitim Kaybı')
+plt.plot(epochs, val_loss, 'g*-', label= 'Validation Kaybı')
+plt.title('Model Eğitim ve Validation Kayıpları')
+plt. legend()
+
+plt.show()
+
